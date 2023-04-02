@@ -1,3 +1,5 @@
+#![feature(variant_count)]
+
 use ::std::fs::read_to_string;
 
 use ::log::debug;

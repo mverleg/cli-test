@@ -10,6 +10,18 @@ pub struct CliTest {
     pub path: PathBuf,
 }
 
+enum BlockType {
+    Test,
+    ExitCode,
+    Out,
+}
+
+static BLOCK_OPTIONS: [&'static str; 3] = [
+    "TEST",
+    "EXIT_CODE",
+    "OUT",
+];
+
 impl CliTest {
     pub fn parse(code: &str, path: &Path) -> Result<Self, String> {
         let lines = code.lines().collect::<Vec<_>>();
@@ -42,7 +54,8 @@ impl CliTest {
                 match keyword.as_str() {
                     "test:" => {},
                     unknown => {
-                        fail!("found unknown keyword '{keyword}' on line {ix}: '{line}'")
+                        fail!("found unknown keyword '{keyword}' on line {ix}: '{line}'; try one of ['{}']",
+                            BLOCK_OPTIONS.iter().map(|s| *s).collect::<Vec<_>>().join("', '"))
                     },
                 }
             }
@@ -50,5 +63,22 @@ impl CliTest {
         }
         debug!("parsed test: {test:?}");
         Ok(test)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::std::mem;
+
+    use super::*;
+
+    #[test]
+    fn all_variants_have_option() {
+        assert_eq!(mem::variant_count::<BlockType>(), BLOCK_OPTIONS.len())
+    }
+
+    #[test]
+    fn all_options_are_parseable() {
+        todo!()
     }
 }

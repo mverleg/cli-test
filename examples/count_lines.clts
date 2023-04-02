@@ -3,5 +3,5 @@
 TEST:
     printf 'a\nb\nc' | wc -l
 
-CODE: 0
+EXIT_CODE: 0
 OUT: it == 3
