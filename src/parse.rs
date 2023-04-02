@@ -2,9 +2,10 @@ use ::std::cell::LazyCell;
 use ::std::collections::HashSet;
 use ::std::path::Path;
 use ::std::path::PathBuf;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
 use ::log::debug;
-
 use ::regex::Regex;
 
 use crate::fail;
@@ -40,6 +41,13 @@ static BLOCK_OPTIONS: [&'static str; 4] = [
     "ERR",
 ];
 
+#[derive(Debug, PartialEq, Eq)]
+enum SeenBefore {
+    Never,
+    BeforeThisCase,
+    ThisCase,
+}
+
 impl CliTest {
     pub fn parse(code: &str, path: &Path) -> Result<Self, String> {
         let lines = code.lines().collect::<Vec<_>>();
@@ -51,14 +59,14 @@ impl CliTest {
             err: Vec::new(),
             cases: Vec::new(),
         };
-        let mut keywords_seen = HashSet::new();
+        let mut seen_for_test = HashMap::new();
         let mut prev_keyword = INITIAL_PLACEHOLDER.to_owned();
         let mut block: Vec<String> = Vec::new();
         loop {
             let Some(line) = lines.get(ix) else {
                 break
             };
-            if let Err(err) = handle_line(line, &mut test, &mut prev_keyword, &mut block, &mut keywords_seen) {
+            if let Err(err) = handle_line(line, &mut test, &mut prev_keyword, &mut block, &mut seen_for_test) {
                 return Err(format!("parse error at {}:{}: {err} (in line '{}')", path.to_str().unwrap(), ix + 1, line))
             }
             ix += 1
@@ -74,7 +82,7 @@ fn handle_line(
         test: &mut CliTest,
         prev_keyword: &mut String,
         block: &mut Vec<String>,
-        keywords_seen: &mut HashSet<String>
+        seen_for_test: &mut HashMap<String, usize>
 ) -> Result<(), String> {
     if LEADING_SPACE_RE.with(|re| re.is_match(line)) {
         //TODO @mark: de-indent
@@ -92,9 +100,9 @@ fn handle_line(
         }
         line_keyword.pop();
         if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
-            let is_handled_before = keywords_seen.insert(prev_keyword.clone());
+            let seen_before = register_seen(prev_keyword, seen_for_test, test.cases.len());
             //TODO @mark: is_handled_before not that useful with multiple test cases
-            handle_keyword(&prev_keyword, block, test, is_handled_before)?;
+            handle_keyword(&prev_keyword, block, test, seen_before)?;
             *prev_keyword = line_keyword;
             *block = Vec::new();
             block.push(code);
@@ -107,11 +115,29 @@ fn handle_line(
     Ok(())
 }
 
+fn register_seen(prev_keyword: &str, seen_for_test: &mut HashMap<String, usize>, cur_case: usize) -> SeenBefore {
+    match seen_for_test.entry((*prev_keyword).clone()) {
+        Entry::Occupied(mut entry) => {
+            let prev = *entry.get();
+            *entry.get_mut() = cur_case;
+            if prev == cur_case {
+                SeenBefore::ThisCase
+            } else {
+                SeenBefore::BeforeThisCase
+            }
+        }
+        Entry::Vacant(vacancy) => {
+            vacancy.insert(cur_case);
+            SeenBefore::Never
+        }
+    }
+}
+
 fn handle_keyword(
     prev_keyword: &str,
     block: &Vec<String>,
     test: &mut CliTest,
-    is_handled_before: bool,
+    seen_before: SeenBefore,
 ) -> Result<(), String> {
     match prev_keyword {
         "TEST" => {
@@ -125,11 +151,13 @@ fn handle_keyword(
         "EXIT_CODE" => {
             match test.cases.last_mut() {
                 Some(cur) => {
-                    //TODO @mark: one per test
+                    if seen_before == SeenBefore::ThisCase {
+                        fail!("EXIT_CODE may appear only once before the first test case")
+                    }
                     (*cur).exit_code = block.clone()
                 }
                 None => {
-                    if is_handled_before {
+                    if seen_before != Never {
                         fail!("EXIT_CODE may appear only once before the first test case")
                     }
                     test.exit_code = block.clone()
