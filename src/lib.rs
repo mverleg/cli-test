@@ -22,8 +22,8 @@ fn find_cli_tests(root: PathBuf) -> Result<Vec<PathBuf>, String> {
     let results = Vec::new();
     for entry_res in walker.into_iter() {
         let entry = entry_res.map_err(|err| format!("count not scan for test files, err: {err}"))?;
-        if let Some(name) = entry.file_name() {
-            if name.ends_with(".clts") {
+        if let Some(name) = entry.file_name().to_str() {
+            if name.ends_with(".clts") && entry.path().is_file() {
                 todo!()
             }
         }

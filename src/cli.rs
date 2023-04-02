@@ -1,8 +1,6 @@
 use ::std::path::PathBuf;
 
 use ::clap::Parser;
-use ::clap::Subcommand;
-use ::env_logger;
 
 #[derive(Parser, Debug)]
 #[command()]
