@@ -1,5 +1,6 @@
 [package]
 name = "cli-test"
+description = "A mini language and test runner for testing command line utilities"
 version = "0.1.0"
 edition = "2021"
 authors = ["Mark <mverleg.noreply@gmail.com>"]
