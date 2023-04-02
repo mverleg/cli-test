@@ -17,15 +17,27 @@ thread_local! {
 }
 
 #[derive(Debug)]
-pub struct CliTest {
-    pub path: PathBuf,
-    pub test: Vec<String>,
+pub struct TestCase {
+    pub cases: Vec<String>,
+    pub exit_code: Vec<String>,
+    pub out: Vec<String>,
+    pub err: Vec<String>,
 }
 
-static BLOCK_OPTIONS: [&'static str; 3] = [
+#[derive(Debug)]
+pub struct CliTest {
+    pub path: PathBuf,
+    pub exit_code: Vec<String>,
+    pub out: Vec<String>,
+    pub err: Vec<String>,
+    pub cases: Vec<TestCase>,
+}
+
+static BLOCK_OPTIONS: [&'static str; 4] = [
     "TEST",
     "EXIT_CODE",
     "OUT",
+    "ERR",
 ];
 
 impl CliTest {
@@ -34,7 +46,10 @@ impl CliTest {
         let mut ix = 0;
         let mut test = CliTest {
             path: path.to_owned(),
-            test: Vec::new(),
+            exit_code: Vec::new(),
+            out: Vec::new(),
+            err: Vec::new(),
+            cases: Vec::new(),
         };
         let mut keywords_seen = HashSet::new();
         let mut prev_keyword = INITIAL_PLACEHOLDER.to_owned();
@@ -78,12 +93,11 @@ fn handle_line(
         line_keyword.pop();
         if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
             let is_handled_before = keywords_seen.insert(prev_keyword.clone());
+            //TODO @mark: is_handled_before not that useful with multiple test cases
             handle_keyword(&prev_keyword, block, test, is_handled_before)?;
             *prev_keyword = line_keyword;
             *block = Vec::new();
-            if EMPTY_RE.with(|re| re.is_match(&code)) {
-                block.push(code);
-            }
+            block.push(code);
         } else {
             fail!("found unknown keyword '{line_keyword}'; try one of ['{}'] \
                     if this is a cli-test keyword, or indent it if it is embedded code",
@@ -100,14 +114,58 @@ fn handle_keyword(
     is_handled_before: bool,
 ) -> Result<(), String> {
     match prev_keyword {
-        "test" => {
-            // if is_handled_before {
-            //     fail!("more than one TEST keyword")
-            // }
-            test.test = block.clone()
+        "TEST" => {
+            test.cases.push(TestCase {
+                cases: block.clone(),
+                exit_code: Vec::new(),
+                out: Vec::new(),
+                err: Vec::new(),
+            })
         },
+        "EXIT_CODE" => {
+            match test.cases.last_mut() {
+                Some(cur) => {
+                    //TODO @mark: one per test
+                    (*cur).exit_code = block.clone()
+                }
+                None => {
+                    if is_handled_before {
+                        fail!("EXIT_CODE may appear only once before the first test case")
+                    }
+                    test.exit_code = block.clone()
+                }
+            }
+        }
+        "OUT" => {
+            match test.cases.last_mut() {
+                Some(cur) => {
+                    //TODO @mark: one per test
+                    (*cur).out = block.clone()
+                }
+                None => {
+                    if is_handled_before {
+                        fail!("OUT may appear only once before the first test case")
+                    }
+                    test.err = block.clone()
+                }
+            }
+        }
+        "ERR" => {
+            match test.cases.last_mut() {
+                Some(cur) => {
+                    //TODO @mark: one per test
+                    (*cur).err = block.clone()
+                }
+                None => {
+                    if is_handled_before {
+                        fail!("ERR may appear only once before the first test case")
+                    }
+                    test.err = block.clone()
+                }
+            }
+        }
         s if s == INITIAL_PLACEHOLDER => {
-            if EMPTY_RE.with(|re| block.iter().all(|line| re.is_match(line))) {
+            if ! EMPTY_RE.with(|re| block.iter().all(|line| re.is_match(line))) {
                 debug!("found {} lines before first keyword:\n  {}", block.len(), block.join("  \n"));
                 fail!("encountered code before the first keyword; use a keyword like 'TEST' before embedding code")
             }
