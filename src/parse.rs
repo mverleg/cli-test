@@ -1,12 +1,20 @@
+use ::std::cell::LazyCell;
+use ::std::collections::HashSet;
 use ::std::path::Path;
 use ::std::path::PathBuf;
-use std::collections::HashSet;
 
 use ::log::debug;
+
+use ::regex::Regex;
 
 use crate::fail;
 
 static INITIAL_PLACEHOLDER: &'static str = "::init::";
+
+thread_local! {
+    static LEADING_SPACE_RE: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"^(\s|$)").unwrap());
+    static EMPTY_RE: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"^\s*$").unwrap());
+}
 
 #[derive(Debug)]
 pub struct CliTest {
@@ -35,9 +43,8 @@ impl CliTest {
             let Some(line) = lines.get(ix) else {
                 break
             };
-            let loc_str = format!("{}:{}", path.to_str().unwrap(), ix + 1);
             if let Err(err) = handle_line(line, &mut test, &mut prev_keyword, &mut block, &mut keywords_seen) {
-                return Err(format!("parse error at {}:{}: {err}", path.to_str().unwrap(), ix + 1))
+                return Err(format!("parse error at {}:{}: {err} (in line '{}')", path.to_str().unwrap(), ix + 1, line))
             }
             ix += 1
         }
@@ -54,7 +61,7 @@ fn handle_line(
         block: &mut Vec<String>,
         keywords_seen: &mut HashSet<String>
 ) -> Result<(), String> {
-    if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
+    if LEADING_SPACE_RE.with(|re| re.is_match(line)) {
         //TODO @mark: de-indent
         block.push((*line).to_owned())
     } else if line.starts_with("#") {
@@ -65,7 +72,7 @@ fn handle_line(
             None => (line.to_uppercase(), "".to_owned()),
         };
         if !line_keyword.ends_with(':') {
-            fail!("found a line starting with '{line_keyword}' ('{line}'), but not followed by a colon (:); \
+            fail!("found a line starting with '{line_keyword}' but not followed by a colon (:); \
                     cli-test keywords must be followed by a colon, and embedded code should be indented")
         }
         line_keyword.pop();
@@ -74,11 +81,11 @@ fn handle_line(
             handle_keyword(&prev_keyword, block, test, is_handled_before)?;
             *prev_keyword = line_keyword;
             *block = Vec::new();
-            if !code.is_empty() {
+            if EMPTY_RE.with(|re| re.is_match(&code)) {
                 block.push(code);
             }
         } else {
-            fail!("found unknown keyword '{line_keyword}' in '{line}'; try one of ['{}'] \
+            fail!("found unknown keyword '{line_keyword}'; try one of ['{}'] \
                     if this is a cli-test keyword, or indent it if it is embedded code",
                     BLOCK_OPTIONS.iter().map(|s| *s).collect::<Vec<_>>().join("', '"))
         }
@@ -100,7 +107,10 @@ fn handle_keyword(
             test.test = block.clone()
         },
         s if s == INITIAL_PLACEHOLDER => {
-            fail!("encountered code before the first keyword; use a keyword like 'TEST' before embedding code")
+            if EMPTY_RE.with(|re| block.iter().all(|line| re.is_match(line))) {
+                debug!("found {} lines before first keyword:\n  {}", block.len(), block.join("  \n"));
+                fail!("encountered code before the first keyword; use a keyword like 'TEST' before embedding code")
+            }
         }
         unknown => unimplemented!("keyword='{unknown}'"),
     }

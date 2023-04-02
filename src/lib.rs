@@ -1,4 +1,5 @@
 #![feature(variant_count)]
+#![feature(lazy_cell)]
 
 use ::std::fs::read_to_string;
 
