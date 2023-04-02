@@ -6,6 +6,8 @@ use ::log::debug;
 
 use crate::fail;
 
+static INITIAL_PLACEHOLDER: &'static str = "::init::";
+
 #[derive(Debug)]
 pub struct CliTest {
     pub path: PathBuf,
@@ -27,7 +29,7 @@ impl CliTest {
             test: Vec::new(),
         };
         let mut keywords_seen = HashSet::new();
-        let mut prev_keyword = "init".to_owned();
+        let mut prev_keyword = INITIAL_PLACEHOLDER.to_owned();
         let mut block: Vec<String> = Vec::new();
         loop {
             let Some(line) = lines.get(ix) else {
@@ -69,9 +71,9 @@ fn handle_line(
         line_keyword.pop();
         if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
             let is_handled_before = keywords_seen.insert(prev_keyword.clone());
-            handle_keyword(prev_keyword, block, &mut test, is_handled_before)?;
-            prev_keyword = line_keyword;
-            block = Vec::new();
+            handle_keyword(&prev_keyword, block, test, is_handled_before)?;
+            *prev_keyword = line_keyword;
+            *block = Vec::new();
             if !code.is_empty() {
                 block.push(code);
             }
@@ -85,19 +87,19 @@ fn handle_line(
 }
 
 fn handle_keyword(
-    prev_keyword: String,
-    block: Vec<String>,
+    prev_keyword: &str,
+    block: &Vec<String>,
     test: &mut CliTest,
     is_handled_before: bool,
 ) -> Result<(), String> {
-    match prev_keyword.as_str() {
+    match prev_keyword {
         "test" => {
-            if is_handled_before {
-                fail!("more than one TEST keyword")
-            }
-            test.test = block
+            // if is_handled_before {
+            //     fail!("more than one TEST keyword")
+            // }
+            test.test = block.clone()
         },
-        "init" => {
+        s if s == INITIAL_PLACEHOLDER => {
             fail!("encountered code before the first keyword; use a keyword like 'TEST' before embedding code")
         }
         unknown => unimplemented!("keyword='{unknown}'"),
