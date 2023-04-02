@@ -1,3 +1,4 @@
+use std::fs::read_to_string;
 use ::log::debug;
 
 use crate::parse::CliTest;
@@ -12,7 +13,7 @@ mod parse;
 pub fn cli_test(args: &Args) -> Result<(), String> {
     assert!(!args.roots.is_empty());
     let tests = collect_tests(args)?;
-    todo!()
+    todo!("run")
 }
 
 fn collect_tests(args: &Args) -> Result<Vec<CliTest>, String> {
@@ -25,9 +26,9 @@ fn collect_tests(args: &Args) -> Result<Vec<CliTest>, String> {
     };
     let mut tests = Vec::with_capacity(paths.len());
     for path in paths {
-        tests.push(CliTest {
-            path,
-        })
+        let content = read_to_string(&path)
+            .map_err(|err| format!("could not read cli-test at '{}', err {err}", path.to_string_lossy()))?;
+        tests.push(CliTest::parse(&content)?)
     }
     Ok(tests)
 }

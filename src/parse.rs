@@ -2,5 +2,11 @@ use ::std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct CliTest {
-    pub(crate) path: PathBuf,
+    pub path: PathBuf,
+}
+
+impl CliTest {
+    pub fn parse(code: &str) -> Result<Self, String> {
+        unimplemented!()
+    }
 }
