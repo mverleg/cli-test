@@ -9,10 +9,14 @@ pub use self::cli::Args;
 mod cli;
 
 pub fn cli_test(args: &Args) -> Result<(), String> {
+    assert!(!args.roots.is_empty());
     let pths = match args.path.as_ref() {
         Some(pth) => vec![pth.to_owned()],
-        None => find_cli_tests(PathBuf::from("."))?,
+        None => find_cli_tests(&args.roots, args.max_depth)?,
     };
+    if (args.minimum_tests as usize) < pths.len() {
+        return Err(format!("expected at least {} tests, got {}", args.minimum_tests, pths.len()))
+    }
     todo!()
 }
 
@@ -27,7 +31,7 @@ fn find_cli_tests(roots: &[PathBuf], max_depth: u32) -> Result<Vec<PathBuf>, Str
         for entry_res in walker.into_iter() {
             let entry = entry_res.map_err(|err| format!("count not scan for test files, err: {err}"))?;
             if let Some(name) = entry.file_name().to_str() {
-                if ! seen.insert(entry.path()) {
+                if ! seen.insert(entry.path().to_owned()) {
                     debug!("skipping duplicate test {}", entry.path().to_string_lossy());
                     continue
                 }
