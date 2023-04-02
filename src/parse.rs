@@ -33,41 +33,55 @@ impl CliTest {
             let Some(line) = lines.get(ix) else {
                 break
             };
-            if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
-                //TODO @mark: de-indent
-                block.push((*line).to_owned());
-            } else if line.starts_with("#") {
-                // do nothing, just skip parsing
-            } else {
-                let (mut line_keyword, code) = match line.split_once(' ') {
-                    Some((head, tail)) => (head.to_uppercase(), tail.to_owned()),
-                    None => (line.to_uppercase(), "".to_owned()),
-                };
-                if ! line_keyword.ends_with(':') {
-                    fail!("found a line starting with '{line_keyword}' at {}:{ix} : '{line}', but not followed by a colon (:); \
-                        cli-test keywords must be followed by a colon, and embedded code should be indented",
-                        path.to_str().unwrap())
-                }
-                line_keyword.pop();
-                if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
-                    let is_handled_before = keywords_seen.insert(prev_keyword.clone());
-                    handle_keyword(prev_keyword, block, &mut test, is_handled_before)?;
-                    prev_keyword = line_keyword;
-                    block = Vec::new();
-                    if ! code.is_empty() {
-                        block.push(code);
-                    }
-                } else {
-                    fail!("found unknown keyword '{line_keyword}' at {}:{ix} : '{line}'; try one of ['{}'] \
-                            if this is a cli-test keyword, or indent it if it is embedded code", path.to_str().unwrap(),
-                            BLOCK_OPTIONS.iter().map(|s| *s).collect::<Vec<_>>().join("', '"))
-                }
+            let loc_str = format!("{}:{}", path.to_str().unwrap(), ix + 1);
+            if let Err(err) = handle_line(line, &mut test, &mut prev_keyword, &mut block, &mut keywords_seen) {
+                return Err(format!("parse error at {}:{}: {err}", path.to_str().unwrap(), ix + 1))
             }
             ix += 1
         }
         debug!("parsed test: {test:?}");
         Ok(test)
     }
+}
+
+
+fn handle_line(
+        line: &str,
+        test: &mut CliTest,
+        prev_keyword: &mut String,
+        block: &mut Vec<String>,
+        keywords_seen: &mut HashSet<String>
+) -> Result<(), String> {
+    if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
+        //TODO @mark: de-indent
+        block.push((*line).to_owned())
+    } else if line.starts_with("#") {
+        // do nothing, just skip parsing
+    } else {
+        let (mut line_keyword, code) = match line.split_once(' ') {
+            Some((head, tail)) => (head.to_uppercase(), tail.to_owned()),
+            None => (line.to_uppercase(), "".to_owned()),
+        };
+        if !line_keyword.ends_with(':') {
+            fail!("found a line starting with '{line_keyword}' ('{line}'), but not followed by a colon (:); \
+                    cli-test keywords must be followed by a colon, and embedded code should be indented")
+        }
+        line_keyword.pop();
+        if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
+            let is_handled_before = keywords_seen.insert(prev_keyword.clone());
+            handle_keyword(prev_keyword, block, &mut test, is_handled_before)?;
+            prev_keyword = line_keyword;
+            block = Vec::new();
+            if !code.is_empty() {
+                block.push(code);
+            }
+        } else {
+            fail!("found unknown keyword '{line_keyword}' in '{line}'; try one of ['{}'] \
+                    if this is a cli-test keyword, or indent it if it is embedded code",
+                    BLOCK_OPTIONS.iter().map(|s| *s).collect::<Vec<_>>().join("', '"))
+        }
+    }
+    Ok(())
 }
 
 fn handle_keyword(
