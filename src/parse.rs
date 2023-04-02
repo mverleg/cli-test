@@ -1,9 +1,8 @@
 use ::std::cell::LazyCell;
-use ::std::collections::HashSet;
+use ::std::collections::hash_map::Entry;
+use ::std::collections::HashMap;
 use ::std::path::Path;
 use ::std::path::PathBuf;
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
 
 use ::log::debug;
 use ::regex::Regex;
@@ -41,11 +40,28 @@ static BLOCK_OPTIONS: [&'static str; 4] = [
     "ERR",
 ];
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum SeenBefore {
     Never,
     BeforeThisCase,
     ThisCase,
+}
+
+impl SeenBefore {
+    pub fn fail_if_seen_globally(self, name: &str) -> Result<(), String> {
+        if self != SeenBefore::Never {
+            //TODO @mark: this msg isn't ideal since it is also used if it's allowed to repeat per-test
+            return Err(format!("encountered {name} more than once, must be unique"))
+        }
+        Ok(())
+    }
+
+    pub fn fail_if_seen_for_test(self, name: &str) -> Result<(), String> {
+        if self == SeenBefore::ThisCase {
+            return Err(format!("encountered {name} more than once in this testcase, must be unique per testcase"))
+        }
+        Ok(())
+    }
 }
 
 impl CliTest {
@@ -116,7 +132,7 @@ fn handle_line(
 }
 
 fn register_seen(prev_keyword: &str, seen_for_test: &mut HashMap<String, usize>, cur_case: usize) -> SeenBefore {
-    match seen_for_test.entry((*prev_keyword).clone()) {
+    match seen_for_test.entry(prev_keyword.to_owned()) {
         Entry::Occupied(mut entry) => {
             let prev = *entry.get();
             *entry.get_mut() = cur_case;
@@ -151,15 +167,11 @@ fn handle_keyword(
         "EXIT_CODE" => {
             match test.cases.last_mut() {
                 Some(cur) => {
-                    if seen_before == SeenBefore::ThisCase {
-                        fail!("EXIT_CODE may appear only once before the first test case")
-                    }
+                    seen_before.fail_if_seen_for_test("EXIT_CODE")?;
                     (*cur).exit_code = block.clone()
                 }
                 None => {
-                    if seen_before != Never {
-                        fail!("EXIT_CODE may appear only once before the first test case")
-                    }
+                    seen_before.fail_if_seen_globally("EXIT_CODE")?;
                     test.exit_code = block.clone()
                 }
             }
@@ -167,13 +179,11 @@ fn handle_keyword(
         "OUT" => {
             match test.cases.last_mut() {
                 Some(cur) => {
-                    //TODO @mark: one per test
+                    seen_before.fail_if_seen_for_test("OUT")?;
                     (*cur).out = block.clone()
                 }
                 None => {
-                    if is_handled_before {
-                        fail!("OUT may appear only once before the first test case")
-                    }
+                    seen_before.fail_if_seen_globally("OUT")?;
                     test.err = block.clone()
                 }
             }
@@ -181,13 +191,11 @@ fn handle_keyword(
         "ERR" => {
             match test.cases.last_mut() {
                 Some(cur) => {
-                    //TODO @mark: one per test
+                    seen_before.fail_if_seen_for_test("ERR")?;
                     (*cur).err = block.clone()
                 }
                 None => {
-                    if is_handled_before {
-                        fail!("ERR may appear only once before the first test case")
-                    }
+                    seen_before.fail_if_seen_globally("ERR")?;
                     test.err = block.clone()
                 }
             }
