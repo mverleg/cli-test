@@ -8,6 +8,7 @@ use crate::fail;
 #[derive(Debug)]
 pub struct CliTest {
     pub path: PathBuf,
+    pub test: Vec<String>,
 }
 
 static BLOCK_OPTIONS: [&'static str; 3] = [
@@ -21,7 +22,8 @@ impl CliTest {
         let lines = code.lines().collect::<Vec<_>>();
         let mut ix = 0;
         let mut test = CliTest {
-            path: path.to_owned()
+            path: path.to_owned(),
+            test: Vec::new(),
         };
         let mut prev_keyword = "init".to_owned();
         let mut block: Vec<String> = Vec::new();
@@ -65,8 +67,13 @@ impl CliTest {
     }
 }
 
-fn handle_keyword(prev_keyword: String, block: Vec<String>, x: &mut CliTest) {
-    todo!();
+fn handle_keyword(prev_keyword: String, block: Vec<String>, test: &mut CliTest) {
+    match prev_keyword.as_str() {
+        "test" => {
+            test.test = block
+        },
+        unknown => unimplemented!("keyword='{unknown}'"),
+    }
 }
 
 #[cfg(test)]
