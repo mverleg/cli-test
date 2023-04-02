@@ -25,10 +25,20 @@ impl CliTest {
         let mut test = CliTest {
             path: path.to_owned()
         };
+        let mut block = Vec::new();
         loop {
             let Some(line) = lines.get(ix) else {
                 break
             };
+            if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
+                block.push(line);
+            } else {
+                let keyword = match line.split_once(' ').map(|(head, tail)| head) {
+                    Some(head) => head,
+                    None => line,
+                }.to_lowercase();
+                todo!("keyword {ix}: '{}'", keyword)
+            }
             ix += 1
         }
         debug!("parsed test: {test:?}");
