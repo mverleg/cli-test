@@ -29,3 +29,4 @@ clap = { version = "4.1.10", default-features = true, features = ["std", "derive
 env_logger = "0.10.0"
 #sha2 = "0.10.6"
 #dashmap = "5.4.0"
+walkdir = "2.3.3"
