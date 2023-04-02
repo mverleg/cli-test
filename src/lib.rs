@@ -22,6 +22,7 @@ pub fn cli_test(args: &Args) -> Result<(), String> {
 }
 
 fn collect_tests(args: &Args) -> Result<Vec<CliTest>, String> {
+    if 1==1 { return Err("cli-test is under development and not ready for use yet".to_owned()) }
     let paths = match args.path.as_ref() {
         Some(pth) => {
             debug!("requested cli-test for file {}, not scanning for more tests", pth.to_string_lossy());
