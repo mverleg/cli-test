@@ -18,18 +18,18 @@ thread_local! {
 
 #[derive(Debug)]
 pub struct TestCase {
-    pub cases: Vec<String>,
-    pub exit_code: Vec<String>,
-    pub out: Vec<String>,
-    pub err: Vec<String>,
+    pub cases: String,
+    pub exit_code: String,
+    pub out: String,
+    pub err: String,
 }
 
 #[derive(Debug)]
 pub struct CliTest {
     pub path: PathBuf,
-    pub exit_code: Vec<String>,
-    pub out: Vec<String>,
-    pub err: Vec<String>,
+    pub exit_code: String,
+    pub out: String,
+    pub err: String,
     pub cases: Vec<TestCase>,
 }
 
@@ -70,9 +70,9 @@ impl CliTest {
         let mut ix = 0;
         let mut test = CliTest {
             path: path.to_owned(),
-            exit_code: Vec::new(),
-            out: Vec::new(),
-            err: Vec::new(),
+            exit_code: "".to_owned(),
+            out: "".to_owned(),
+            err: "".to_owned(),
             cases: Vec::new(),
         };
         let mut seen_for_test = HashMap::new();
@@ -155,24 +155,25 @@ fn handle_keyword(
     test: &mut CliTest,
     seen_before: SeenBefore,
 ) -> Result<(), String> {
+    let code = combine_dedent(block);
     match prev_keyword {
         "TEST" => {
             test.cases.push(TestCase {
-                cases: block.clone(),
-                exit_code: Vec::new(),
-                out: Vec::new(),
-                err: Vec::new(),
+                cases: code,
+                exit_code: "".to_owned(),
+                out: "".to_owned(),
+                err: "".to_owned(),
             })
         },
         "EXIT_CODE" => {
             match test.cases.last_mut() {
                 Some(cur) => {
                     seen_before.fail_if_seen_for_test("EXIT_CODE")?;
-                    (*cur).exit_code = block.clone()
+                    (*cur).exit_code = code
                 }
                 None => {
                     seen_before.fail_if_seen_globally("EXIT_CODE")?;
-                    test.exit_code = block.clone()
+                    test.exit_code = code
                 }
             }
         }
@@ -180,11 +181,11 @@ fn handle_keyword(
             match test.cases.last_mut() {
                 Some(cur) => {
                     seen_before.fail_if_seen_for_test("OUT")?;
-                    (*cur).out = block.clone()
+                    (*cur).out = code
                 }
                 None => {
                     seen_before.fail_if_seen_globally("OUT")?;
-                    test.err = block.clone()
+                    test.err = code
                 }
             }
         }
@@ -192,11 +193,11 @@ fn handle_keyword(
             match test.cases.last_mut() {
                 Some(cur) => {
                     seen_before.fail_if_seen_for_test("ERR")?;
-                    (*cur).err = block.clone()
+                    (*cur).err = code
                 }
                 None => {
                     seen_before.fail_if_seen_globally("ERR")?;
-                    test.err = block.clone()
+                    test.err = code
                 }
             }
         }
@@ -209,6 +210,30 @@ fn handle_keyword(
         unknown => unimplemented!("keyword='{unknown}'"),
     }
     Ok(())
+}
+
+fn count_indent(line: &str) -> usize {
+    todo!()
+}
+
+fn combine_dedent(lines: &Vec<String>) -> String {
+    debug_assert!(!lines.is_empty());
+    let mut min_indent = usize::MAX;
+    if lines.len() == 1 {
+        min_indent = count_indent(&lines[0]);
+    } else {
+        for line in lines.iter().skip(1) {
+            let indent = count_indent(line);
+            if indent < min_indent {
+                min_indent = indent
+            }
+        }
+    }
+    for line in lines {
+
+    }
+    let mut code = String::new();
+    todo!()
 }
 
 #[cfg(test)]
