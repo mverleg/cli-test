@@ -1,5 +1,6 @@
 use ::std::path::Path;
 use ::std::path::PathBuf;
+use std::collections::HashSet;
 
 use ::log::debug;
 
@@ -25,6 +26,7 @@ impl CliTest {
             path: path.to_owned(),
             test: Vec::new(),
         };
+        let mut keywords_seen = HashSet::new();
         let mut prev_keyword = "init".to_owned();
         let mut block: Vec<String> = Vec::new();
         loop {
@@ -43,12 +45,13 @@ impl CliTest {
                 };
                 if ! line_keyword.ends_with(':') {
                     fail!("found a line starting with '{line_keyword}' at {}:{ix} : '{line}', but not followed by a colon (:); \
-                        cli-test keywords must be followed by a colon, amd embedded code should be indented",
+                        cli-test keywords must be followed by a colon, and embedded code should be indented",
                         path.to_str().unwrap())
                 }
                 line_keyword.pop();
                 if BLOCK_OPTIONS.contains(&line_keyword.as_str()) {
-                    handle_keyword(prev_keyword, block, &mut test);
+                    let is_handled_before = keywords_seen.insert(prev_keyword.clone());
+                    handle_keyword(prev_keyword, block, &mut test, is_handled_before)?;
                     prev_keyword = line_keyword;
                     block = Vec::new();
                     if ! code.is_empty() {
@@ -67,13 +70,25 @@ impl CliTest {
     }
 }
 
-fn handle_keyword(prev_keyword: String, block: Vec<String>, test: &mut CliTest) {
+fn handle_keyword(
+    prev_keyword: String,
+    block: Vec<String>,
+    test: &mut CliTest,
+    is_handled_before: bool,
+) -> Result<(), String> {
     match prev_keyword.as_str() {
         "test" => {
+            if is_handled_before {
+                fail!("more than one TEST keyword")
+            }
             test.test = block
         },
+        "init" => {
+            fail!("encountered code before the first keyword; use a keyword like 'TEST' before embedding code")
+        }
         unknown => unimplemented!("keyword='{unknown}'"),
     }
+    Ok(())
 }
 
 #[cfg(test)]
