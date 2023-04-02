@@ -7,6 +7,7 @@ use crate::scan::find_cli_tests;
 
 pub use self::cli::Args;
 
+mod common;
 mod cli;
 mod scan;
 mod parse;

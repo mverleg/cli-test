@@ -3,6 +3,8 @@ use ::std::path::PathBuf;
 
 use ::log::debug;
 
+use crate::fail;
+
 #[derive(Debug)]
 pub struct CliTest {
     pub path: PathBuf,
@@ -19,7 +21,7 @@ impl CliTest {
                 }
             }
             None => {
-                return Err(format!("empty test at '{}'", path.to_string_lossy()))
+                fail!("empty test at '{}'", path.to_string_lossy())
             }
         }
         let mut test = CliTest {
@@ -33,11 +35,16 @@ impl CliTest {
             if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
                 block.push(line);
             } else {
-                let keyword = match line.split_once(' ').map(|(head, tail)| head) {
+                let keyword = match line.split_once(' ').map(|(head, _tail)| head) {
                     Some(head) => head,
                     None => line,
                 }.to_lowercase();
-                todo!("keyword {ix}: '{}'", keyword)
+                match keyword.as_str() {
+                    "test:" => {},
+                    unknown => {
+                        fail!("found unknown keyword '{keyword}' on line {ix}: '{line}'")
+                    },
+                }
             }
             ix += 1
         }
