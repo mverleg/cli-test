@@ -1,0 +1,18 @@
+[package]
+name = "cli-test"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mark <mverleg.noreply@gmail.com>"]
+homepage = "https://github.com/mverleg/steel"
+license = "Apache-2.0"
+publish = true
+
+[lib]
+name = "clitest"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cli-test"
+path = "src/main.rs"
+
+[dependencies]
