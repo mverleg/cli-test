@@ -1,5 +1,4 @@
-use ::std::process::{exit, ExitCode, ExitStatus};
-
+use ::std::process::ExitCode;
 use ::clap::Parser;
 
 use ::clitest::Args;

@@ -8,6 +8,12 @@ pub struct Args {
     /// Path of the file to test. By default searches all '*.clts' files
     #[arg()]
     pub path: Option<PathBuf>,
+    /// How many levels of directories to recurse into, at most (for performance)
+    #[arg(short = 'n', long, default_value="1000000", conflicts_with = "path")]
+    pub max_depth: u32,
+    /// Root directory within which to search for tests
+    #[arg(short = 'r', long, conflicts_with = "path")]
+    pub root: Vec<PathBuf>,
 }
 
 #[test]
