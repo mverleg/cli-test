@@ -1,7 +1,11 @@
 #!/usr/bin/env cli-test
 
+# this is the command to test
 TEST:
     printf 'a\nb\nc' | wc -l
 
+# this checks that the exit code is 0
 EXIT_CODE: 0
+
+# this check that the stdout is 3
 OUT: it == 3

@@ -10,12 +10,6 @@ pub struct CliTest {
     pub path: PathBuf,
 }
 
-enum BlockType {
-    Test,
-    ExitCode,
-    Out,
-}
-
 static BLOCK_OPTIONS: [&'static str; 3] = [
     "TEST",
     "EXIT_CODE",
@@ -46,15 +40,24 @@ impl CliTest {
             };
             if line.starts_with(' ') || line.starts_with('\t') || line.is_empty() {
                 block.push(line);
+            } else if line.starts_with("#") {
+                // do nothing, just skip parsing
             } else {
-                let keyword = match line.split_once(' ').map(|(head, _tail)| head) {
+                let mut keyword = match line.split_once(' ').map(|(head, _tail)| head) {
                     Some(head) => head,
                     None => line,
-                }.to_lowercase();
+                }.to_uppercase();
+                if ! keyword.ends_with(':') {
+                    fail!("found a line starting with '{keyword}' at {}:{ix} : '{line}', but not followed by a colon (:); \
+                        cli-test keywords must be followed by a colon, amd embedded code should be indented",
+                        path.to_str().unwrap())
+                }
+                keyword.pop();
                 match keyword.as_str() {
-                    "test:" => {},
+                    "test" => unimplemented!(),
                     unknown => {
-                        fail!("found unknown keyword '{keyword}' on line {ix}: '{line}'; try one of ['{}']",
+                        fail!("found unknown keyword '{keyword}' at {}:{ix} : '{line}'; try one of ['{}'] \
+                            if this is a cli-test keyword, or indent it if it is embedded code", path.to_str().unwrap(),
                             BLOCK_OPTIONS.iter().map(|s| *s).collect::<Vec<_>>().join("', '"))
                     },
                 }
