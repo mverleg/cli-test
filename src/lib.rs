@@ -1,4 +1,5 @@
-use std::fs::read_to_string;
+use ::std::fs::read_to_string;
+
 use ::log::debug;
 
 use crate::parse::CliTest;
@@ -28,7 +29,7 @@ fn collect_tests(args: &Args) -> Result<Vec<CliTest>, String> {
     for path in paths {
         let content = read_to_string(&path)
             .map_err(|err| format!("could not read cli-test at '{}', err {err}", path.to_string_lossy()))?;
-        tests.push(CliTest::parse(&content)?)
+        tests.push(CliTest::parse(&content, &path)?)
     }
     Ok(tests)
 }

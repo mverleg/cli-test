@@ -1,5 +1,6 @@
+use ::std::path::PathBuf;
 use ::std::process::ExitCode;
-use std::path::PathBuf;
+
 use ::clap::Parser;
 
 use ::clitest::Args;

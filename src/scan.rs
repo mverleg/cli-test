@@ -1,10 +1,9 @@
 use ::std::collections::HashSet;
+use ::std::env;
 use ::std::path::PathBuf;
 
 use ::log::debug;
 use ::walkdir::WalkDir;
-
-use ::std::env;
 
 pub fn find_cli_tests(roots: &[PathBuf], max_depth: u32, minimum_tests: u32) -> Result<Vec<PathBuf>, String> {
     debug!("searching cli-tests in [{}] (cwd={}), max depth {max_depth}, expecting at least {minimum_tests} tests",
@@ -32,9 +31,9 @@ pub fn find_cli_tests(roots: &[PathBuf], max_depth: u32, minimum_tests: u32) -> 
             }
         }
     }
-    debug!("found {} tests", results.len());
+    debug!("found {} test(s)", results.len());
     if (minimum_tests as usize) < results.len() {
-        return Err(format!("expected at least {} tests, got {}", minimum_tests, results.len()));
+        return Err(format!("expected at least {} test(s), got {}", minimum_tests, results.len()));
     }
     Ok(results)
 }
