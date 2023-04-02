@@ -212,8 +212,25 @@ fn handle_keyword(
     Ok(())
 }
 
+fn char_indent(ch: char) -> Option<usize> {
+    if ch == ' ' {
+        Some(1)
+    } else if ch == '\t' {
+        Some(4)
+    } else {
+        None
+    }
+}
+
 fn count_indent(line: &str) -> usize {
-    todo!()
+    let mut indent = 0;
+    for ch in line.chars() {
+        match char_indent(ch) {
+            Some(ind) => indent += ind,
+            None => break,
+        }
+    }
+    return indent
 }
 
 fn combine_dedent(lines: &Vec<String>) -> String {
@@ -229,11 +246,22 @@ fn combine_dedent(lines: &Vec<String>) -> String {
             }
         }
     }
-    for line in lines {
-
-    }
     let mut code = String::new();
-    todo!()
+    for line in lines {
+        let mut indent = 0;
+        let mut ix = 0;
+        for ch in line.chars() {
+            if indent >= min_indent {
+                code.push_str(&line[ix..])
+            }
+            match char_indent(ch) {
+                Some(ind) => indent += ind,
+                None => break,
+            }
+            ix += ch.len_utf8();
+        }
+    }
+    code
 }
 
 #[cfg(test)]
