@@ -14,8 +14,8 @@ pub struct Args {
     /// Root directory within which to search for tests
     #[arg(short = 'r', long = "root", conflicts_with = "path")]
     pub roots: Vec<PathBuf>,
-    /// Minimum number of tests expected. Set to 1 to fail when no tests are found
-    #[arg(long, default_value = "0", conflicts_with = "path")]
+    /// Minimum number of tests expected. Set to 0 to succeed even if there are no tests
+    #[arg(long, default_value = "1", conflicts_with = "path")]
     pub minimum_tests: u32,
 }
 
